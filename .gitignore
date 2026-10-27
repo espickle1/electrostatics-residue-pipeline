@@ -218,3 +218,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Electrostatics pipeline
+electrostatics/results/
+electrostatics/config.yaml
+*.dx
+*.pqr
+*.pka
+*.trr
+*.dcd
+*.xtc
+!electrostatics/tests/fixtures/**

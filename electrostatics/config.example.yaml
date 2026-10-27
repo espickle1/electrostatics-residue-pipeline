@@ -1,0 +1,102 @@
+# Demo system: barnase–barstar (PDB 1BRS). Replace with your complex later.
+run_name: vertical_slice_1brs
+
+structure:
+  pdb: data/demo/1BRS.pdb
+  protein_chains: ["A"]
+  partner_chains: ["D"]
+  # Bulk crystallographic waters removed; keep none near the interface for step 1.
+  keep_water_residues: []
+
+variants:
+  - id: A_E73Q
+    chain: A
+    resid: 73
+    from_resname: GLU
+    to_resname: GLN
+
+pH: 7.0
+temperature_K: 298.15
+ionic_strength_M: 0.15
+solute_dielectric: 2.0
+solvent_dielectric: 78.5
+
+grid:
+  # Centred on A:GLU73 CA in the deposited WT frame; fine spacing ~0.5 A.
+  # 129^3 keeps the demo slice inside typical APBS memory limits.
+  dime: [129, 129, 129]
+  glen: [64.0, 64.0, 64.0]
+  gcent: [20.266, 44.067, 8.879]
+  spacing_A: 0.5
+
+cluster:
+  cutoff_A: 8.0
+  # Frozen WT 8 A neighborhood of A:GLU73 (not recomputed per variant).
+  residues:
+    - A:VAL10
+    - A:LEU14
+    - A:LEU20
+    - A:TYR24
+    - A:ILE25
+    - A:THR26
+    - A:LYS27
+    - A:ILE51
+    - A:GLY52
+    - A:GLY53
+    - A:ASP54
+    - A:ILE55
+    - A:PHE56
+    - A:SER57
+    - A:ASN58
+    - A:ARG59
+    - A:LEU63
+    - A:TRP71
+    - A:ARG72
+    - A:GLU73
+    - A:ALA74
+    - A:ASP75
+    - A:ILE76
+    - A:ARG83
+    - A:ASP86
+    - A:ARG87
+    - A:ILE88
+    - A:LEU89
+    - A:TYR90
+    - A:SER91
+    - A:TYR97
+    - A:THR99
+    - A:HIS102
+    - A:TYR103
+    - A:PHE106
+    - D:ASP35
+    - D:ALA36
+    - D:TRP38
+    - D:ASP39
+    - D:THR42
+  cap_scheme: ace_nme
+
+common_atoms:
+  # Report only atoms shared across variants (no substituted side chain).
+  include_partner_contacts: true
+  include_backbone_at_site: true
+  exclude_substituted_sidechain: true
+
+protonation:
+  flag_radius_A: 12.0
+  titratable: ["ASP", "GLU", "HIS", "CYS", "TYR", "LYS", "ARG"]
+
+alignment:
+  # Unused in step 1 (no MD). Frames above this would be dropped later.
+  rmsd_cutoff_A: 2.0
+
+prepare:
+  # Short CPU restrained minimise via OpenMM; not explicit-solvent MD sampling.
+  minimise_max_iterations: 200
+  restraint_k_kcal: 10.0
+
+aimnet:
+  model: aimnet2
+  gpu: "T4"
+
+apbs:
+  forcefield: PARSE

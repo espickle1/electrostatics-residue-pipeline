@@ -1,0 +1,13 @@
+read
+    mol pqr partner.pqr
+end
+elec name partner
+    mg-manual
+    dime 97 97 97
+    glen 50.000000 50.000000 50.000000
+    gcent 1.000000 2.000000 3.000000
+    molecule 1
+    lpbe
+    calcenergy total
+end
+quit
