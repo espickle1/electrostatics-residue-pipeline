@@ -100,8 +100,9 @@ def prepare_frame(config_yaml: str, pdb_bytes: bytes, variant_id: str) -> dict[s
     ensure_tree(root)
 
     src_pdb = root / "structures" / "_input.pdb"
-    if not src_pdb.exists():
-        src_pdb.write_bytes(pdb_bytes)
+    src_pdb.parent.mkdir(parents=True, exist_ok=True)
+    # Idempotent overwrite so parallel prepare.map calls share one input PDB.
+    src_pdb.write_bytes(pdb_bytes)
 
     vmap = _variant_map(cfg)
     if variant_id not in vmap:
@@ -248,9 +249,9 @@ def aimnet_energy(config_yaml: str, variant_id: str, frame: str = "0") -> dict[s
 def aggregate_results(config_yaml: str, stage: dict[str, Any]) -> dict[str, Any]:
     from io_layout import apbs_dir, results_dir, run_root
     from aggregate import (
+        classical_summary,
         make_difference_dx,
         rows_from_stage_results,
-        two_row_summary,
         write_long_table,
         write_versions,
     )
@@ -270,25 +271,40 @@ def aggregate_results(config_yaml: str, stage: dict[str, Any]) -> dict[str, Any]
         )
     rdir = results_dir(root)
     long_path = rdir / "long_table.csv"
-    summary_path = rdir / "summary_two_row.csv"
+    summary_path = rdir / "summary_classical.csv"
+    # Keep step-1 filename as a copy for continuity.
+    legacy_summary = rdir / "summary_two_row.csv"
     df = write_long_table(rows, long_path)
-    summary = two_row_summary(df, wt_id="WT", out_path=summary_path)
+    summary = classical_summary(df, wt_id="WT", out_path=summary_path)
+    summary.to_csv(legacy_summary, index=False)
 
-    # WT − variant complex dx for the first non-WT variant.
+    write_dx = bool(cfg.get("pipeline", {}).get("write_dx_diffs", False))
+    dx_paths: list[str] = []
     non_wt = [v for v in stage["variants"] if v != "WT"]
-    dx_out = None
-    if non_wt:
+    if write_dx and non_wt:
+        wt_dx = Path(apbs_dir(root, "WT", "0") / "complex.dx")
+        for vid in non_wt:
+            var_dx = Path(apbs_dir(root, vid, "0") / "complex.dx")
+            dx_out = rdir / f"WT_minus_{vid}_complex.dx"
+            make_difference_dx(wt_dx, var_dx, dx_out)
+            dx_paths.append(str(dx_out))
+    elif non_wt and stage.get("mode") == "vertical_slice":
+        # Step-1 default: one WT−variant dx for the first mutant.
         vid = non_wt[0]
         wt_dx = Path(apbs_dir(root, "WT", "0") / "complex.dx")
         var_dx = Path(apbs_dir(root, vid, "0") / "complex.dx")
         dx_out = rdir / f"WT_minus_{vid}_complex.dx"
         make_difference_dx(wt_dx, var_dx, dx_out)
+        dx_paths.append(str(dx_out))
 
     write_versions(
         rdir / "versions.json",
-        {"classical": CLASSICAL_PIN, "aimnet": AIMNET_PIN},
+        {
+            "classical": CLASSICAL_PIN,
+            "aimnet": AIMNET_PIN,
+            "mode": stage.get("mode", "classical"),
+        },
     )
-    # Protonation mismatch flags if provided.
     flags = stage.get("protonation_flags", [])
     (rdir / "protonation_flags.json").write_text(
         json.dumps(flags, indent=2), encoding="utf-8"
@@ -299,7 +315,7 @@ def aggregate_results(config_yaml: str, stage: dict[str, Any]) -> dict[str, Any]
         "long_table": str(long_path),
         "summary": str(summary_path),
         "summary_records": summary.to_dict(orient="records"),
-        "dx_diff": str(dx_out) if dx_out else None,
+        "dx_diffs": dx_paths,
         "long_preview": df.head(20).to_dict(orient="records"),
     }
 
@@ -324,8 +340,13 @@ def download_results(config_yaml: str) -> dict[str, bytes]:
 
 
 @app.local_entrypoint()
-def main(config: Optional[str] = None):
-    """Vertical slice: WT + one variant, one frame, no MD."""
+def main(config: Optional[str] = None, mode: Optional[str] = None):
+    """Run the electrostatics pipeline.
+
+    Modes:
+      classical — step 2: prepare + PDB2PQR + APBS over the full variant list
+      vertical_slice — step 1: also cluster + AIMNet2
+    """
     import sys
 
     sys.path.insert(0, str(SRC))
@@ -334,6 +355,9 @@ def main(config: Optional[str] = None):
     config_path = Path(config) if config else HERE / "config.example.yaml"
     cfg = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     config_yaml = config_path.read_text(encoding="utf-8")
+    run_mode = (mode or cfg.get("pipeline", {}).get("mode") or "classical").strip()
+    if run_mode not in {"classical", "vertical_slice"}:
+        raise ValueError(f"Unknown mode {run_mode!r}; use classical or vertical_slice")
 
     pdb_path = Path(cfg["structure"]["pdb"])
     if not pdb_path.is_absolute():
@@ -341,13 +365,16 @@ def main(config: Optional[str] = None):
     pdb_bytes = pdb_path.read_bytes()
 
     variant_ids = ["WT"] + [v["id"] for v in cfg.get("variants", [])]
-    print(f"vertical slice variants={variant_ids} config={config_path}")
+    print(f"mode={run_mode} variants={variant_ids} config={config_path}")
 
-    # 1) Prepare
-    manifests = {}
-    for vid in variant_ids:
-        print(f"prepare {vid}")
-        manifests[vid] = prepare_frame.remote(config_yaml, pdb_bytes, vid)
+    # 1) Prepare (map over variants; PDB uploaded once via first call semantics)
+    print("prepare map")
+    manifests_list = list(
+        prepare_frame.starmap(  # type: ignore[attr-defined]
+            [(config_yaml, pdb_bytes, vid) for vid in variant_ids]
+        )
+    )
+    manifests = dict(zip(variant_ids, manifests_list))
 
     # 2) Protonate (map)
     print("protonate map")
@@ -358,11 +385,12 @@ def main(config: Optional[str] = None):
     )
     prot_by = dict(zip(variant_ids, prot_results))
 
+    site = cfg["variants"][0]
     flags = flag_protonation_mismatches(
         {vid: prot_by[vid].get("pka_states", []) for vid in variant_ids},
         cfg,
-        cfg["variants"][0]["chain"],
-        int(cfg["variants"][0]["resid"]),
+        site["chain"],
+        int(site["resid"]),
     )
 
     # 3) APBS map
@@ -374,29 +402,30 @@ def main(config: Optional[str] = None):
     )
     apbs_by = dict(zip(variant_ids, apbs_results))
 
-    # 4) Cluster map
-    print("cluster map")
-    cluster_results = list(
-        cluster_cut.starmap(  # type: ignore[attr-defined]
-            [(config_yaml, vid, "0") for vid in variant_ids]
+    cluster_by: dict[str, Any] = {}
+    aimnet_by: dict[str, Any] = {}
+    if run_mode == "vertical_slice":
+        print("cluster map")
+        cluster_results = list(
+            cluster_cut.starmap(  # type: ignore[attr-defined]
+                [(config_yaml, vid, "0") for vid in variant_ids]
+            )
         )
-    )
-    cluster_by = dict(zip(variant_ids, cluster_results))
+        cluster_by = dict(zip(variant_ids, cluster_results))
 
-    # 5) AIMNet2 (sequential; small GPU jobs)
-    aimnet_by = {}
-    for vid in variant_ids:
-        print(f"aimnet {vid}")
-        aimnet_by[vid] = aimnet_energy.remote(config_yaml, vid, "0")
+        for vid in variant_ids:
+            print(f"aimnet {vid}")
+            aimnet_by[vid] = aimnet_energy.remote(config_yaml, vid, "0")
 
     stage = {
+        "mode": run_mode,
         "variants": {
             vid: {
                 "manifest": manifests[vid],
                 "protonate": prot_by[vid],
                 "apbs": apbs_by[vid],
-                "cluster": cluster_by[vid],
-                "aimnet": aimnet_by[vid],
+                "cluster": cluster_by.get(vid),
+                "aimnet": aimnet_by.get(vid),
             }
             for vid in variant_ids
         },
@@ -415,4 +444,4 @@ def main(config: Optional[str] = None):
         dest.write_bytes(data)
         print(f"wrote {dest}")
 
-    print("done vertical slice")
+    print(f"done {run_mode}")

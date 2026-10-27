@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from aggregate import two_row_summary
+from aggregate import classical_summary, two_row_summary
 from apbs_run import ddg_elec
 
 
@@ -27,3 +27,16 @@ def test_two_row_summary():
     assert wt_row["dddG_elec_kJ_mol"] == 0.0
     assert var_row["dddG_elec_kJ_mol"] == 10.0
     assert var_row["ddE_int_eV"] == 1.0
+
+
+def test_classical_summary_ranks_by_abs_dddg():
+    rows = [
+        {"variant": "WT", "frame": "0", "quantity": "ddG_binding_elec", "value": 0.0, "unit": "kJ/mol"},
+        {"variant": "A_SMALL", "frame": "0", "quantity": "ddG_binding_elec", "value": 5.0, "unit": "kJ/mol"},
+        {"variant": "A_LARGE", "frame": "0", "quantity": "ddG_binding_elec", "value": -40.0, "unit": "kJ/mol"},
+        {"variant": "A_MID", "frame": "0", "quantity": "ddG_binding_elec", "value": 12.0, "unit": "kJ/mol"},
+    ]
+    summary = classical_summary(pd.DataFrame(rows))
+    assert list(summary["variant"]) == ["A_LARGE", "A_MID", "A_SMALL", "WT"]
+    assert list(summary["rank"]) == [1, 2, 3, 4]
+    assert summary.set_index("variant").loc["A_LARGE", "dddG_elec_kJ_mol"] == -40.0

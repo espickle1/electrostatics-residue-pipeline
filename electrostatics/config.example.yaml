@@ -1,19 +1,55 @@
 # Demo system: barnase–barstar (PDB 1BRS). Replace with your complex later.
-run_name: vertical_slice_1brs
+run_name: classical_scale_1brs
 
 structure:
   pdb: data/demo/1BRS.pdb
   protein_chains: ["A"]
   partner_chains: ["D"]
-  # Bulk crystallographic waters removed; keep none near the interface for step 1.
+  # Bulk crystallographic waters removed; keep none near the interface for step 1–2.
   keep_water_residues: []
 
+# Classical scale: charge-altering interface sites (still one minimized frame each).
 variants:
   - id: A_E73Q
     chain: A
     resid: 73
     from_resname: GLU
     to_resname: GLN
+  - id: A_R59Q
+    chain: A
+    resid: 59
+    from_resname: ARG
+    to_resname: GLN
+  - id: A_K27Q
+    chain: A
+    resid: 27
+    from_resname: LYS
+    to_resname: GLN
+  - id: A_D54N
+    chain: A
+    resid: 54
+    from_resname: ASP
+    to_resname: ASN
+  - id: A_R83Q
+    chain: A
+    resid: 83
+    from_resname: ARG
+    to_resname: GLN
+  - id: A_D86N
+    chain: A
+    resid: 86
+    from_resname: ASP
+    to_resname: ASN
+  - id: A_H102Q
+    chain: A
+    resid: 102
+    from_resname: HIS
+    to_resname: GLN
+  - id: D_D39N
+    chain: D
+    resid: 39
+    from_resname: ASP
+    to_resname: ASN
 
 pH: 7.0
 temperature_K: 298.15
@@ -32,6 +68,7 @@ grid:
 cluster:
   cutoff_A: 8.0
   # Frozen WT 8 A neighborhood of A:GLU73 (not recomputed per variant).
+  # Used again when the quantum branch returns (step 4).
   residues:
     - A:VAL10
     - A:LEU14
@@ -86,7 +123,7 @@ protonation:
   titratable: ["ASP", "GLU", "HIS", "CYS", "TYR", "LYS", "ARG"]
 
 alignment:
-  # Unused in step 1 (no MD). Frames above this would be dropped later.
+  # Unused until step 3 (no MD). Frames above this would be dropped later.
   rmsd_cutoff_A: 2.0
 
 prepare:
@@ -100,3 +137,9 @@ aimnet:
 
 apbs:
   forcefield: PARSE
+
+pipeline:
+  # classical: prepare + PDB2PQR + APBS over the full variant list (step 2).
+  # vertical_slice: also cluster + AIMNet2 (step 1).
+  mode: classical
+  write_dx_diffs: false

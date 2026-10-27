@@ -1,4 +1,4 @@
-"""Long-format table and step-1 two-row summary."""
+"""Long-format table and classical / vertical-slice summaries."""
 
 from __future__ import annotations
 
@@ -87,42 +87,65 @@ def write_long_table(rows: list[dict[str, Any]], path: Path) -> pd.DataFrame:
     return df
 
 
-def two_row_summary(
+def classical_summary(
     long_df: pd.DataFrame,
     wt_id: str = "WT",
     out_path: Path | None = None,
 ) -> pd.DataFrame:
-    """One row per variant with ΔΔG_elec and ΔE_int vs WT."""
-    bind = long_df[long_df["quantity"] == "ddG_binding_elec"].set_index("variant")
+    """One row per variant with WT-referenced ΔΔG_elec (and ΔE_int if present).
+
+    Ranked by |ΔΔG_elec| descending so the classical-scale table is easy to scan.
+    Absolute ELEC energies stay only in the long table and are not ranked.
+    """
+    bind = long_df[long_df["quantity"] == "ddG_binding_elec"].copy()
+    if bind.empty:
+        raise KeyError("ddG_binding_elec missing from long table")
+    # One value per variant (step 1–2: single frame).
+    bind = bind.groupby("variant", as_index=True)["value"].mean()
     if wt_id not in bind.index:
         raise KeyError(f"WT row {wt_id!r} missing from long table")
-    wt_bind = float(bind.loc[wt_id, "value"])
+    wt_bind = float(bind.loc[wt_id])
 
-    de = long_df[long_df["quantity"] == "dE_int"].set_index("variant")
-    wt_de = float(de.loc[wt_id, "value"]) if wt_id in de.index else None
+    de = long_df[long_df["quantity"] == "dE_int"]
+    de_s = (
+        de.groupby("variant")["value"].mean() if not de.empty else pd.Series(dtype=float)
+    )
+    wt_de = float(de_s.loc[wt_id]) if wt_id in de_s.index else None
 
     summary_rows = []
     for variant in bind.index.unique():
-        v_bind = float(bind.loc[variant, "value"])
-        row = {
+        v_bind = float(bind.loc[variant])
+        row: dict[str, Any] = {
             "variant": variant,
             "ddG_binding_elec_kJ_mol": v_bind,
             "dddG_elec_kJ_mol": ddg_elec(v_bind, wt_bind),
         }
-        if wt_de is not None and variant in de.index:
-            v_de = float(de.loc[variant, "value"])
+        if wt_de is not None and variant in de_s.index:
+            v_de = float(de_s.loc[variant])
             row["dE_int_eV"] = v_de
             row["ddE_int_eV"] = v_de - wt_de
         summary_rows.append(row)
 
     summary = pd.DataFrame(summary_rows)
+    summary["abs_dddG_elec_kJ_mol"] = summary["dddG_elec_kJ_mol"].abs()
+    summary = summary.sort_values(
+        by=["abs_dddG_elec_kJ_mol", "variant"],
+        ascending=[False, True],
+    ).reset_index(drop=True)
+    summary["rank"] = range(1, len(summary) + 1)
+    summary = summary.drop(columns=["abs_dddG_elec_kJ_mol"])
+
     if out_path is not None:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         summary.to_csv(out_path, index=False)
     return summary
 
 
-def write_versions(path: Path, versions: dict[str, str]) -> None:
+# Back-compat alias used by step-1 vertical slice callers / tests.
+two_row_summary = classical_summary
+
+
+def write_versions(path: Path, versions: dict[str, Any]) -> None:
     path.write_text(json.dumps(versions, indent=2), encoding="utf-8")
 
 
