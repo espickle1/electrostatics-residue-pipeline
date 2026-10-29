@@ -1,0 +1,122 @@
+﻿[
+    {
+        "file":  "Pol_H1N1_7NI0.cif",
+        "pdb_id":  "7NI0",
+        "subtype":  "H1N1",
+        "complex_class":  "heterotrimer",
+        "strain":  "A/Brevig Mission/1/1918(H1N1)",
+        "bytes":  3301975
+    },
+    {
+        "file":  "Pol_H1N1_9RVE.cif",
+        "pdb_id":  "9RVE",
+        "subtype":  "H1N1",
+        "complex_class":  "heterotrimer",
+        "strain":  "A/Brevig Mission/1/1918(H1N1)",
+        "bytes":  3146569
+    },
+    {
+        "file":  "Pol_PB1PB2_H1N1_3A1G.cif",
+        "pdb_id":  "3A1G",
+        "subtype":  "H1N1",
+        "complex_class":  "PB1-PB2",
+        "strain":  "A/Puerto Rico/8/34(H1N1)",
+        "bytes":  241273
+    },
+    {
+        "file":  "Pol_PAPB1_H1N1_6SYI.cif",
+        "pdb_id":  "6SYI",
+        "subtype":  "H1N1",
+        "complex_class":  "PA-PB1",
+        "strain":  "A/Wisconsin/629-D00036/2009(H1N1)",
+        "bytes":  743868
+    },
+    {
+        "file":  "Pol_H3N2_6QNW.cif",
+        "pdb_id":  "6QNW",
+        "subtype":  "H3N2",
+        "complex_class":  "heterotrimer",
+        "strain":  "A/Northern Territory/60/1968(H3N2)",
+        "bytes":  13429585
+    },
+    {
+        "file":  "Pol_H3N2_6RR7.cif",
+        "pdb_id":  "6RR7",
+        "subtype":  "H3N2",
+        "complex_class":  "heterotrimer+vRNA",
+        "strain":  "A/NT/60/1968(H3N2)",
+        "bytes":  4045931
+    },
+    {
+        "file":  "Pol_H3N2_8Y7M.cif",
+        "pdb_id":  "8Y7M",
+        "subtype":  "H3N2",
+        "complex_class":  "heterotrimer+NS2",
+        "strain":  "A/Hong Kong/1/1968 \u0026 A/NT/60/1968(H3N2)",
+        "bytes":  2913476
+    },
+    {
+        "file":  "Pol_NP_H3N2_9V44.cif",
+        "pdb_id":  "9V44",
+        "subtype":  "H3N2",
+        "complex_class":  "heterotrimer+NP",
+        "strain":  "A/Victoria/3/1975(H3N2)",
+        "bytes":  1919518
+    },
+    {
+        "file":  "Pol_H5N1_6QPF.cif",
+        "pdb_id":  "6QPF",
+        "subtype":  "H5N1",
+        "complex_class":  "heterotrimer",
+        "strain":  "A/duck/Fujian/01/2002(H5N1)",
+        "bytes":  6570044
+    },
+    {
+        "file":  "Pol_H5N1_8H69.cif",
+        "pdb_id":  "8H69",
+        "subtype":  "H5N1",
+        "complex_class":  "heterotrimer",
+        "strain":  "A/goose/Guangdong/1/1996(H5N1)",
+        "bytes":  1872489
+    },
+    {
+        "file":  "Pol_H5N1_9LCK.cif",
+        "pdb_id":  "9LCK",
+        "subtype":  "H5N1",
+        "complex_class":  "heterotrimer+cRNA",
+        "strain":  "A/goose/Guangdong/1/1996(H5N1)",
+        "bytes":  2022918
+    },
+    {
+        "file":  "Pol_ANP32_H5N1_8R1L.cif",
+        "pdb_id":  "8R1L",
+        "subtype":  "H5N1",
+        "complex_class":  "heterotrimer+ANP32B",
+        "strain":  "avian H5N1 + human ANP32B",
+        "bytes":  2473798
+    },
+    {
+        "file":  "Pol_ANP32_H5N1_8R1J.cif",
+        "pdb_id":  "8R1J",
+        "subtype":  "H5N1",
+        "complex_class":  "heterotrimer-dimer+ANP32B",
+        "strain":  "avian H5N1 + human ANP32B",
+        "bytes":  6450927
+    },
+    {
+        "file":  "Pol_PAPB1_H5N1_3CM8.cif",
+        "pdb_id":  "3CM8",
+        "subtype":  "H5N1",
+        "complex_class":  "PA-PB1",
+        "strain":  "avian H5N1 (PAC-PB1N)",
+        "bytes":  401278
+    },
+    {
+        "file":  "Pol_PAPB1_2ZNL.cif",
+        "pdb_id":  "2ZNL",
+        "subtype":  "FluA",
+        "complex_class":  "PA-PB1",
+        "strain":  "Influenza A virus (unspecified)",
+        "bytes":  404448
+    }
+]
