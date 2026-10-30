@@ -1,0 +1,29 @@
+# Thresholds for the binding-partner classifier (docs/binding-partner-pipeline-talk.md).
+# Every key is optional; the values below are the defaults.
+partner:
+  # Accessibility: reported for every site; it only decides none vs buried when
+  # nothing is in the contact shell.
+  surface_rsa_cutoff: 0.20
+  probe_radius: 1.4
+
+  # Contact shell
+  contact_distance: 4.5       # heavy-atom distance in Angstrom
+  min_pairs: 3                # atom pairs per partner (protein, nucleic acid, ligand, same chain)
+  min_pairs_ion: 1            # atom pairs per partner for ions
+  same_chain_gap: 5           # same-chain residues with |i - j| <= this are not partners
+  same_protein_identity: 0.90 # PDB files only (no entity table); mmCIF uses the entity id
+
+  # Placement across files
+  min_ref_identity: 0.30      # skip chains below this identity to the reference chain
+  require_same_residue: true  # aligned residue must have the reference residue type
+  biounit_globs: []           # e.g. ["*_3mer*"] for files that are already a biological unit
+
+  # Combining copies, files and PDB entries
+  copy_fraction: 0.5          # label must be in this fraction of a file's placed copies
+  min_entries: 2              # PDB entries a label must appear in ...
+  min_entry_fraction: 0.30    # ... and this fraction of entries that could contain it
+
+  # Component lists (three-letter residue names). Setting one replaces its default list.
+  # excluded_components: [HOH, SO4, PO4, GOL, EDO, PEG, ACT, DMS, MPD, TRS, MES, CIT]
+  # glycan_components: [NAG, NDG, BMA, MAN, FUC, GAL]
+  # ion_components: [ZN, MG, CA, MN, FE, NA, CL]
